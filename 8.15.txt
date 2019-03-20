@@ -1,0 +1,554 @@
+// 全局配置
+var config = {
+    lights: [],
+    onChange: updateLight
+}
+var hemisphereLight;
+var checkedname;
+var ldInfo;//保存路灯信息
+
+var app = new THING.App({
+    // 3D 的容器
+    container: "div3d",
+    skyBox: 'Night',
+    url: "models/building",
+    beforeLoad: function (ev) {
+        // 将场景中的灯光以 'SpotLight' 类型的方式创建
+        //ev.castType('SpotLight', /spotLight/);
+        ev.castType('SpotLight', /rectLight/);
+    }
+});
+
+
+// 加载完成
+app.on('load', function () {
+    init_gui();
+    
+    // 关闭场景灯光效果
+    //app.sceneManager.closeSceneLights();
+    //app.debugMode = true;//调试面板
+
+    //setupSpotLights();
+    setupRectLights();
+    showLdInfo();
+
+    // 环境光对象
+    var ambientLight = {
+        intensity: 0.4,
+        color: '#FFFFFF',
+    };  
+
+    // 半球光照
+    hemisphereLight = {
+        intensity: 0.5,
+        color: '#FFFFFF',
+        groundColor: '#202020',
+    };
+
+    // 主灯光对象
+    var mainLight = {
+        shadow: true,
+        intensity: 1,
+        color: '#FFFFFF',
+        alpha: 90,
+        beta: 0,
+    };
+
+    // 第二光源对象
+    var secondaryLight = {
+        shadow: false,
+        intensity: 1,
+        color: '#FFFFFF',
+        alpha: 90,
+        beta: 0,
+    };
+
+    // 全局配置
+    var config1 = {
+        ambientLight,
+        hemisphereLight,
+        mainLight,
+        secondaryLight
+    }
+
+    app.setLighting({ config1 });
+    initRoomLightsPanel(config);
+    
+    //路灯数据
+     $.ajax({
+		url: 'http://120.26.216.74:8080/API/IOTDataFill.asmx/Fill',
+        data:{
+            strTemplate:'{"b":$data.rows}',
+            iTable:1,
+            iRelateID:2,
+            strSql:'select * from $TABLE where FATHER=11 ',
+            strNameObject:'data',
+        },
+        dataType: 'json',
+        type:"post",
+        success: function (data) 
+        {
+            //console.log("成功")
+            var aa = JSON.stringify(data.data);
+            var bb = eval("("+aa+")");
+            var cc = eval("("+bb+")");
+            console.table(cc.b);
+            console.log(cc.b)
+            ldInfo=cc.b;
+        },
+        error: function (data) 
+        {
+            //console.log("失败")
+        }
+	});
+  
+});
+
+//操作面板
+function initRoomLightsPanel(param) {
+
+    param = param || {};
+    var onChange = param['onChange'];
+    var lights = param['lights'];
+    var panel = new dat.gui.GUI(param);
+    var dataObj = {
+        turnOn: {'开启路灯1': false}
+    };
+
+    // panel.add(param, 'name').name(param.name).setColor('#00F0F0');
+    for (var i = 0; i < lights.length; i++) {
+        var _light = lights[i];
+        panel.add(_light, 'name').name(_light.name).setColor('#00F0F0');
+        for (var j = 0; j < _light.lights.length; j++) {
+            var light = _light.lights[j];
+            panel.add(light, 'turnOn').name('开启路灯'+(j+1)).on('change', onChange);
+        }
+        panel.add(_light, 'intensity').step(0.01).min(0).max(1).name('光源强度').isChangeValue(true).on('change', onChange);
+    }
+    
+    panel.close(true);//默认关闭面板
+}
+
+//初始显示物体
+function init_gui(){
+     //移除叉车和房子
+    app.query(/car/).destroy();
+    app.query('.Building').destroy();
+    // 创建平面
+    var plane = app.create({ 
+        type: 'Plane',
+        width: 90,
+        height: 70,
+        position: [-10, 0.1, -22] 
+    });
+    // 平面旋转90度
+    plane.rotateX(-90);
+    plane.style.color='#0B4428';
+
+
+    // 创建20个单头路灯 
+    var ldobj_1 = app.create({ 
+        type: 'Thing', 
+        name: 'rectLight_1', 
+        url: 'http://model.3dmomoda.cn/models/8991cc645350493d9b7c41f655953665/0/gltf/', // 模型地址 
+        position: [20, 0, -20], // 位置 
+        angle: -90, // 旋转 
+        complete: function() { 
+            //console.log('thing created: ' + this.id); 
+        } 
+    });
+
+    var ldobj_2 = app.create({ 
+        type: 'Thing', 
+        name: 'rectLight_2', 
+        url: 'http://model.3dmomoda.cn/models/8991cc645350493d9b7c41f655953665/0/gltf/', // 模型地址 
+        position: [12, 0, -20], // 位置 
+        angle: -90, // 旋转 
+        complete: function() { 
+            //console.log('thing created: ' + this.id); 
+        } 
+    });
+
+    var ldobj_3 = app.create({ 
+        type: 'Thing', 
+        name: 'rectLight_3', 
+        url: 'http://model.3dmomoda.cn/models/8991cc645350493d9b7c41f655953665/0/gltf/', // 模型地址 
+        position: [5, 0, -20], // 位置 
+        angle: -90, // 旋转 
+        complete: function() { 
+            //console.log('thing created: ' + this.id); 
+        } 
+    });
+
+    var ldobj_4 = app.create({ 
+        type: 'Thing', 
+        name: 'rectLight_4', 
+        url: 'http://model.3dmomoda.cn/models/8991cc645350493d9b7c41f655953665/0/gltf/', // 模型地址 
+        position: [-2, 0, -20], // 位置 
+        angle: -90, // 旋转 
+        complete: function() { 
+            //console.log('thing created: ' + this.id); 
+        } 
+    });
+
+    var ldobj_5 = app.create({ 
+        type: 'Thing', 
+        name: 'rectLight_5', 
+        url: 'http://model.3dmomoda.cn/models/8991cc645350493d9b7c41f655953665/0/gltf/', // 模型地址 
+        position: [-9, 0, -20], // 位置 
+        angle: -90, // 旋转 
+        complete: function() { 
+            //console.log('thing created: ' + this.id); 
+        } 
+    });
+
+    var ldobj_6 = app.create({ 
+        type: 'Thing', 
+        name: 'rectLight_6', 
+        url: 'http://model.3dmomoda.cn/models/8991cc645350493d9b7c41f655953665/0/gltf/', // 模型地址 
+        position: [-16, 0, -20], // 位置 
+        angle: -90, // 旋转 
+        complete: function() { 
+            //console.log('thing created: ' + this.id); 
+        } 
+    });
+
+    var ldobj_7 = app.create({ 
+        type: 'Thing', 
+        name: 'rectLight_7', 
+        url: 'http://model.3dmomoda.cn/models/8991cc645350493d9b7c41f655953665/0/gltf/', // 模型地址 
+        position: [-23, 0, -20], // 位置 
+        angle: -90, // 旋转 
+        complete: function() { 
+            //console.log('thing created: ' + this.id); 
+        } 
+    });
+
+    var ldobj_8 = app.create({ 
+        type: 'Thing', 
+        name: 'rectLight_8', 
+        url: 'http://model.3dmomoda.cn/models/8991cc645350493d9b7c41f655953665/0/gltf/', // 模型地址 
+        position: [-30, 0, -20], // 位置 
+        angle: -90, // 旋转 
+        complete: function() { 
+            //console.log('thing created: ' + this.id); 
+        } 
+    });
+
+    var ldobj_9 = app.create({ 
+        type: 'Thing', 
+        name: 'rectLight_9', 
+        url: 'http://model.3dmomoda.cn/models/8991cc645350493d9b7c41f655953665/0/gltf/', // 模型地址 
+        position: [-37, 0, -20], // 位置 
+        angle: -90, // 旋转 
+        complete: function() { 
+            //console.log('thing created: ' + this.id); 
+        } 
+    });
+      
+    var ldobj_10 = app.create({ 
+        type: 'Thing', 
+        name: 'rectLight_10', 
+        url: 'http://model.3dmomoda.cn/models/8991cc645350493d9b7c41f655953665/0/gltf/', // 模型地址 
+        position: [-44, 0, -20], // 位置 
+        angle: -90, // 旋转 
+        complete: function() { 
+            //console.log('thing created: ' + this.id); 
+        } 
+    });
+
+    var ldobj_11 = app.create({ 
+        type: 'Thing', 
+        name: 'rectLight_11', 
+        url: 'http://model.3dmomoda.cn/models/8991cc645350493d9b7c41f655953665/0/gltf/', // 模型地址 
+        position: [20, 0, 1], // 位置 
+        angle: -90, // 旋转 
+        complete: function() { 
+            //console.log('thing created: ' + this.id); 
+        } 
+    });
+
+    var ldobj_12 = app.create({ 
+        type: 'Thing', 
+        name: 'rectLight_12', 
+        url: 'http://model.3dmomoda.cn/models/8991cc645350493d9b7c41f655953665/0/gltf/', // 模型地址 
+        position: [12, 0, 1], // 位置 
+        angle: -90, // 旋转 
+        complete: function() { 
+            //console.log('thing created: ' + this.id); 
+        } 
+    });
+
+    var ldobj_13 = app.create({ 
+        type: 'Thing', 
+        name: 'rectLight_13', 
+        url: 'http://model.3dmomoda.cn/models/8991cc645350493d9b7c41f655953665/0/gltf/', // 模型地址 
+        position: [5, 0, 1], // 位置 
+        angle: -90, // 旋转 
+        complete: function() { 
+            //console.log('thing created: ' + this.id); 
+        } 
+    });
+/*
+    var ldobj_14 = app.create({ 
+        type: 'Thing', 
+        name: 'rectLight_14', 
+        url: 'http://model.3dmomoda.cn/models/8991cc645350493d9b7c41f655953665/0/gltf/', // 模型地址 
+        position: [-2, 0, 1], // 位置 
+        angle: -90, // 旋转 
+        complete: function() { 
+            //console.log('thing created: ' + this.id); 
+        } 
+    });
+
+    var ldobj_15 = app.create({ 
+        type: 'Thing', 
+        name: 'rectLight_15', 
+        url: 'http://model.3dmomoda.cn/models/8991cc645350493d9b7c41f655953665/0/gltf/', // 模型地址 
+        position: [-9, 0, 1], // 位置 
+        angle: -90, // 旋转 
+        complete: function() { 
+            //console.log('thing created: ' + this.id); 
+        } 
+    });
+
+    var ldobj_16 = app.create({ 
+        type: 'Thing', 
+        name: 'rectLight_16', 
+        url: 'http://model.3dmomoda.cn/models/8991cc645350493d9b7c41f655953665/0/gltf/', // 模型地址 
+        position: [-16, 0, 1], // 位置 
+        angle: -90, // 旋转 
+        complete: function() { 
+            //console.log('thing created: ' + this.id); 
+        } 
+    });
+
+    var ldobj_17 = app.create({ 
+        type: 'Thing', 
+        name: 'rectLight_17', 
+        url: 'http://model.3dmomoda.cn/models/8991cc645350493d9b7c41f655953665/0/gltf/', // 模型地址 
+        position: [-23, 0, 1], // 位置 
+        angle: -90, // 旋转 
+        complete: function() { 
+            //console.log('thing created: ' + this.id); 
+        } 
+    });
+
+    var ldobj_18 = app.create({ 
+        type: 'Thing', 
+        name: 'rectLight_18', 
+        url: 'http://model.3dmomoda.cn/models/8991cc645350493d9b7c41f655953665/0/gltf/', // 模型地址 
+        position: [-30, 0, 1], // 位置 
+        angle: -90, // 旋转 
+        complete: function() { 
+            //console.log('thing created: ' + this.id); 
+        } 
+    });
+
+    var ldobj_19 = app.create({ 
+        type: 'Thing', 
+        name: 'rectLight_19', 
+        url: 'http://model.3dmomoda.cn/models/8991cc645350493d9b7c41f655953665/0/gltf/', // 模型地址 
+        position: [-37, 0, 1], // 位置 
+        angle: -90, // 旋转 
+        complete: function() { 
+            //console.log('thing created: ' + this.id); 
+        } 
+    });
+      
+    var ldobj_20 = app.create({ 
+        type: 'Thing', 
+        name: 'rectLight_20', 
+        url: 'http://model.3dmomoda.cn/models/8991cc645350493d9b7c41f655953665/0/gltf/', // 模型地址 
+        position: [-44, 0, 1], // 位置 
+        angle: -90, // 旋转 
+        complete: function() { 
+            //console.log('thing created: ' + this.id); 
+        } 
+    }); */
+}
+
+
+// 更新灯光效果
+function updateLight(){
+    for (var i = 0; i < config.lights.length; i++) {
+        var _light = config.lights[0];  
+        for (var j = 0; j < _light.lights.length; j++) {
+            var light = _light.lights[j];
+            //console.log(light)
+            light.light.turnOn = light.turnOn;
+            
+        }
+    }
+
+    var intensity = 0;
+    /*var spotLights = app.query(/spotLight/);
+    spotLights.forEach(function (thing) {
+        thing.intensity = config.lights[0].intensity;
+        intensity += thing.intensity;
+    });*/
+    var rectLights = app.query(/rectLight/);
+    rectLights.forEach(function (thing) {
+        thing.intensity = config.lights[1].intensity;
+        intensity += thing.intensity;
+    });
+
+    hemisphereLight.intensity = intensity / rectLights.length;
+    app.setLighting({ hemisphereLight });
+}
+
+/*// 设置双头灯效果
+function setupSpotLights() {   
+    var spotLights = app.query(/spotLight/);
+    var lightConfig = { name: '双头灯', intensity: 1, lights: [] };
+    spotLights.forEach(function (light) {
+        //console.log(light);
+        var pos = light.position;
+        light.lightOffset = [0, 2, 0];
+        light.lightTarget = [pos[0], pos[1], pos[2]];
+        light.intensity = lightConfig.intensity;
+        light.angle = Math.PI/3;
+        light.penumbra = 0.8;//虚化程度
+        light.castShadow = !app.isMobile;
+        light.distance = 6;
+        light.centerNodeName = 'LO-gan_01';
+
+        lightConfig.lights.push({ turnOn: true, light });
+    });
+
+    config.lights.push(lightConfig);
+}*/
+
+// 设置单头灯效果
+function setupRectLights() {
+    var spotLights = app.query(/rectLight/);
+    var lightConfig = { name: '单头灯', intensity: 1, lights: [] };
+    spotLights.forEach(function (light) {
+        var pos = light.position;
+        light.lightOffset = [0, 1, 0];
+        light.lightTarget = [pos[0], pos[1], pos[2]+3];
+        light.intensity = lightConfig.intensity;
+        light.angle = Math.PI / 3;
+        light.penumbra = 0.8;
+        light.castShadow = !app.isMobile;
+        light.distance = 6;
+        light.centerNodeName = 'LO-gan_01';
+
+        lightConfig.lights.push({ turnOn: true, light });
+    });
+
+    config.lights.push(lightConfig);
+}
+
+
+//显示路灯信息
+function showLdInfo(){
+    /*//双头灯
+    app.query(/spotLight/).forEach(function(obj) {
+        var k1=obj.name.substring(obj.name.length-1,obj.name.length);
+        obj.on('click', function() {
+           ldInfoDetail(obj,ldInfo[k1-1]);
+        });
+      });  
+    */
+    //单头灯 
+    app.query(/rectLight/).forEach(function(obj){
+        var k2=obj.name.split("_");
+        //console.log(k2[1]);
+        obj.on('click', function() {
+            ldInfoDetail(obj,ldInfo[k2[1]]);
+        });
+    });
+
+
+}
+//路灯详细信息
+function ldInfoDetail(obj,info){
+    checkedname=obj.name;
+    var dataObj={
+        name1:obj.name,
+        name2:info.NAME,
+        Typename:info.TYPENAME,
+        Main_lamp:info.Main_lamp,
+        Vice_lamp:info.Vice_lamp,
+        Voltage:info.Voltage+" V",
+        open: true,
+        FirDimming:info.FirDimming,
+        camera: true
+    };
+    var pan=createUI(obj,200);
+    pan.add(dataObj, 'name1').name('灯号');
+    pan.add(dataObj, 'name2').name('名称');
+    pan.add(dataObj, 'Typename').name('类型');
+    pan.add(dataObj, 'Main_lamp').name('主灯');
+    pan.add(dataObj, 'Vice_lamp').name('辅灯');
+    pan.add(dataObj, 'Voltage').name('电压');
+    pan.add(dataObj, 'open').name('开关').on('change', changeLdState);
+    pan.add(dataObj, 'FirDimming').name('主灯亮度值');
+    pan.addIframe(dataObj, 'camera').name('摄像头').iframeUrl('http://www.3dmomoda.com');
+}
+
+//开关某一个灯
+function changeLdState(state){
+    //console.log("状态："+state);
+    /*//双头灯
+    var sp1=app.query(/spotLight/);
+    for(var i=0;i<sp1.length;i++){
+        var n=parseInt(i)+parseInt(1);
+        if(state){//开关按钮状态
+            if(checkedname=='spotLight'+n+''){
+                console.log('spotLight'+n+'')
+                sp1[i].intensity=1;
+            }
+        }else{
+            if(checkedname=='spotLight'+n+''){
+                sp1[i].intensity=0;
+            }
+        }
+    }*/
+    //单头灯
+    var sp2=app.query(/rectLight/);
+    for(var j=0;j<sp2.length;j++){
+        var n=parseInt(j)+parseInt(1);
+         if(state){//开关按钮状态
+            if(checkedname=='rectLight_'+n+''){
+                sp2[j].intensity=1;
+
+                console.log(n+"--------"+sp2[j].name);
+                
+            }
+        }else{
+            if(checkedname=='rectLight_'+n+''){
+                sp2[j].intensity=0;
+            }
+        }
+    }
+}
+
+//角标面板
+function createUI(obj,width){
+    width = width || 110;
+    // 创建widget (动态绑定数据用)
+    var panel = THING.widget.Panel({
+        name: '路灯信息',
+        cornerType: 's2c3',
+        width: width.toString() + "px",
+        isClose: true,
+        hasTitle: true,
+        opacity: 0.8,
+        media: true
+    });
+    this.panel = panel;
+
+    // 创建obj ui (绑定到物体上)
+    var ui = app.create({
+        type: 'UI',
+        parent: obj,
+        el: panel.domElement,
+        offset: [0, 10, 0],
+        pivot: [0, 1] // 界面的重心
+    });
+    this.ui = ui;
+    return panel;
+}
+ 
